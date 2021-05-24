@@ -1,0 +1,21 @@
+
+
+
+
+中位数、平均数计算方法：
+
+select
+ 
+    avg(t1.price) as avg_price,
+ 
+        percentile(int(price), 0.5) as mid_price
+ 
+from
+ 
+        dev.devXXXXX
+ 
+group by
+ 
+        cate_id,
+ 
+        cate_name;
