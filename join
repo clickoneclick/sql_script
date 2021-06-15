@@ -1,0 +1,13 @@
+SELECT ds, count(*)
+FROM 
+  (SELECT a.ds
+         , unix_timestamp(a.start_time) as start_time
+      --    , get_json_object(en_list, '$.\[0].scope') as scope
+      --    , concat(cast(info.lon as STRING), ' ' ,cast(info.lat as STRING)) as loc
+  from          (select * from a  where ds between "202102" and "202103" and status = 0 ) a
+      join      (select * from b  where ds between "202102" and "202103" and entity_id is not null) b   on a.id = b.id and a.ds = b.ds
+      left join (select * from c  where ds between "202102" and "202103" ) c   on a.id = c.id and b.id = c.id 
+  where s.status =0
+      and a.status =0
+)group by ds;
+
