@@ -1,0 +1,6 @@
+select
+  SIZE(split(trim(str_to_map(str, ';', ‘=‘)[‘key_1’]),”\\|”)) as len,
+  split(trim(str_to_map(str, ';', ‘=‘)[‘key_1’]),”\\|”)[0] as val_1,
+  trim(split(str_to_map(std_tag, ';', ‘=‘)[‘key’_2],”\\|”)[1]) as val_2,
+FROM a
+WHERE dt="2021" 
