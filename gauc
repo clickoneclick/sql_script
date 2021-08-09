@@ -1,0 +1,62 @@
+drop table if exists ctr_expr_stats;
+create table if not exists ctr_expr_stats as
+select expr_tag, group_key, label, ectr, ROW_NUMBER()over(PARTITION by expr_tag order by ectr) as r
+    , ROW_NUMBER()over(PARTITION by expr_tag, group_key order by ectr) as group_r
+from 
+(
+    select t0.gsid, t0.poiid, t0.campaign_id, t0.cpx, t0.adgroup_id, if(t0.action=2,1,0) as label
+        , t0.expr_tag, t1.ectr, t1.group_key
+    from 
+    (
+        select gsid, poiid, campaign_id, cpx, adgroup_id, max(cast(action as int)) as action
+        ,case 
+        when test_id rlike '(3066|3067)' then 'roi'
+        when test_id rlike '(3068|3069)' then 'model_base1'
+        when test_id rlike '(3070|3071)' then 'model_base2'
+        when test_id rlike '(3078|3079)' then 'cvr'
+        else NULL end as expr_tag
+        from table_a
+        where ds="20210713" 
+            and hh>"17"
+            and action>""
+            and cpx>""
+            and test_id rlike '(3062|3063|3064|3065|3066|3067|3068|3069|3070|3071|3078|3079)'
+        group by gsid, poiid, campaign_id, cpx, adgroup_id, test_id
+    ) t0
+    left join
+    (
+        select gsid, poiid, campaign_id, cpx, adgroup_id, ectr, concat_ws('_', keywords, adcode) as group_key
+        from table_B
+    ) t1 
+    on t0.gsid=t1.gsid and t0.poiid=t1.poiid and t0.campaign_id=t1.campaign_id and t0.cpx=t1.cpx and t0.adgroup_id=t1.adgroup_id
+)
+;
+
+select t0.expr_tag, auc, ctr, cnt, t1.gauc 
+from 
+(
+    select expr_tag
+    , round((sum(label*r) - 0.5*sum(label)*(sum(label)+1))/(sum(label) * sum(1-label)),4) AS auc
+    , sum(if(label=1,1,0))/count(*) as ctr
+    , count(*) as cnt
+    from ctr_expr_stats
+    group by expr_tag
+)t0
+left join
+(   
+    -- gauc
+    select expr_tag, sum(auc*group_weight)/sum(group_weight) as gauc 
+    from 
+    (
+        select expr_tag, group_key
+            , (sum(label*group_r) - 0.5*sum(label)*(sum(label)+1))/(sum(label) * sum(1-label)) AS auc
+            , log10(sum(1))*if(sum(if(label=0,1,0))=0 or sum(if(label=1,1,0))=0, 0, 1) as group_weight
+            , count(*) as cnt
+        from ctr_expr_stats
+        group by expr_tag, group_key
+    )
+    group by expr_tag
+)t1
+on t0.expr_tag=t1.expr_tag
+
+;
